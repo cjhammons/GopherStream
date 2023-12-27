@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cjhammons.com/goaudio/config"
 	"fmt"
 	"github.com/dhowden/tag"
 	"io"
@@ -10,7 +11,12 @@ import (
 )
 
 func main() {
-	// Start an HTTP server and listen on port 8080
+	cfg, err := config.LoadConfig("config.json")
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+	cfg.Print()
+
 	http.HandleFunc("/stream", streamHandler)
 	log.Println("Server is running on http://localhost:8080/stream")
 	log.Fatal(http.ListenAndServe(":8080", nil))
