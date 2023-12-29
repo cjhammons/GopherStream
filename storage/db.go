@@ -71,6 +71,134 @@ func InitializeDB() (*sql.DB, error) {
 	return db, nil
 }
 
+func InsertArtist(db *sql.DB, name string, artFilePath string) error {
+	// Start a new transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare the statement
+	stmt, err := tx.Prepare(`
+		INSERT INTO 
+			artists(name, art_file_path) 
+			VALUES(?, ?)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Execute the statement
+	_, err = stmt.Exec(name, artFilePath)
+	if err != nil {
+		return err
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func InsertSong(db *sql.DB, title string, artistID int64, albumID int64, genreID int64, trackNumber int64, filePath string) error {
+	// Start a new transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare the statement
+	stmt, err := tx.Prepare(
+		`INSERT INTO 
+			songs(title, artist_id, album_id, genre_id, track_number, file_path) 
+			VALUES(?, ?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Execute the statement
+	_, err = stmt.Exec(title, artistID, albumID, genreID, trackNumber, filePath)
+	if err != nil {
+		return err
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func InsertAlbum(db *sql.DB, title string, artistID int64, releaseDate string, artFilePath string) error {
+	// Start a new transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare the statement
+	stmt, err := tx.Prepare(`
+		INSERT INTO 
+			albums(title, artist_id, release_date, art_file_path) 
+			VALUES(?, ?, ?, ?)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Execute the statement
+	_, err = stmt.Exec(title, artistID, releaseDate, artFilePath)
+	if err != nil {
+		return err
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func InsertGenre(db *sql.DB, name string) error {
+	// Start a new transaction
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare the statement
+	stmt, err := tx.Prepare(`
+		INSERT INTO 
+			genres(name) 
+			VALUES(?)
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Execute the statement
+	_, err = stmt.Exec(name)
+	if err != nil {
+		return err
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //TODO: Add a function to insert a new record into the database
 //TODO: Add a function to retrieve a record from the database
 //TODO: Add a function to update a record in the database
