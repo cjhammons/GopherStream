@@ -43,6 +43,7 @@ func InitializeDB() (*sql.DB, error) {
 			genre_id INTEGER NOT NULL,
 			track_number INTEGER NOT NULL,
 			file_path TEXT NOT NULL,
+			file_format TEXT NOT NULL,
 			FOREIGN KEY (album_id) REFERENCES albums(id),
 			FOREIGN KEY (genre_id) REFERENCES genre(id),
 			FOREIGN KEY (artist_id) REFERENCES artists(id)
@@ -103,7 +104,7 @@ func InsertArtist(db *sql.DB, name string, artFilePath string) error {
 	return nil
 }
 
-func InsertSong(db *sql.DB, title string, artistID int64, albumID int64, genreID int64, trackNumber int64, filePath string) error {
+func InsertSong(db *sql.DB, title string, artistID int64, albumID int64, genreID int64, trackNumber int64, filePath string, fileFormat string) error {
 	// Start a new transaction
 	tx, err := db.Begin()
 	if err != nil {
@@ -113,7 +114,7 @@ func InsertSong(db *sql.DB, title string, artistID int64, albumID int64, genreID
 	// Prepare the statement
 	stmt, err := tx.Prepare(
 		`INSERT INTO 
-			songs(title, artist_id, album_id, genre_id, track_number, file_path) 
+			songs(title, artist_id, album_id, genre_id, track_number, file_path, file_format) 
 			VALUES(?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
