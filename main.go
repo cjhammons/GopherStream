@@ -2,6 +2,7 @@ package main
 
 import (
 	"cjhammons.com/goaudio/config"
+	"cjhammons.com/goaudio/storage"
 	"fmt"
 	"github.com/dhowden/tag"
 	"io"
@@ -17,9 +18,16 @@ func main() {
 	}
 	cfg.Print()
 
-	http.HandleFunc("/stream", streamHandler)
-	log.Println("Server is running on http://localhost:8080/stream")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	db, err := storage.InitializeDB()
+	if err != nil {
+		log.Fatalf("Error initializing database: %v", err)
+	}
+	fmt.Println("closing db lol")
+	db.Close()
+
+	// http.HandleFunc("/stream", streamHandler)
+	// log.Println("Server is running on http://localhost:8080/stream")
+	// log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 // streamHandler handles the HTTP request to stream the audio file

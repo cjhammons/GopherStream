@@ -6,8 +6,8 @@ import (
 	"log"
 )
 
-func InitializeDB(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+func InitializeDB() (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", "./goaudio.db")
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +56,7 @@ func InitializeDB(dbPath string) (*sql.DB, error) {
 	}
 
 	for _, query := range create_table_queries {
+		log.Printf("Executing query: %v", query)
 		if _, err := tx.Exec(query); err != nil {
 			// If an error occurs, roll back the transaction and report the error
 			tx.Rollback()
