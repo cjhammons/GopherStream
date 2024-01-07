@@ -73,6 +73,26 @@ func InitializeDB() (*sql.DB, error) {
 }
 
 func InsertArtist(db *sql.DB, name string, artFilePath string) error {
+	var artistID int64
+
+	// Check if artist already exists
+	exists_query := `
+		SELECT
+			id
+		FROM
+			artists
+		WHERE
+			name = ?
+	`
+	err := db.QueryRow(exists_query, name).Scan(&artistID)
+	if err == nil {
+		log.Printf("Artist already exists: %v", name)
+		return nil
+	} else if err != sql.ErrNoRows {
+		log.Printf("Error querying database: %v", err)
+		return err
+	}
+
 	// Start a new transaction
 	tx, err := db.Begin()
 	if err != nil {
@@ -105,6 +125,32 @@ func InsertArtist(db *sql.DB, name string, artFilePath string) error {
 }
 
 func InsertSong(db *sql.DB, title string, artistID int64, albumID int64, genreID int64, trackNumber int64, filePath string, fileFormat string) error {
+	var songId int64
+
+	// Check if song already exists
+	// We also need to check the artist id, as
+	exists_query := `
+	SELECT 
+		id 
+	FROM 
+		artists 
+	WHERE 
+		title = ?
+		AND 
+		artist_id = ?
+		AND
+		album_id = ?
+		AND
+		genre_id = ?`
+	err := db.QueryRow(exists_query, title, artistID, albumID, genreID).Scan(&songId)
+	if err == nil {
+		log.Printf("Song already exists: %v by %v", title, artistID)
+		return nil
+	} else if err != sql.ErrNoRows {
+		log.Printf("Error querying database: %v", err)
+		return err
+	}
+
 	// Start a new transaction
 	tx, err := db.Begin()
 	if err != nil {
