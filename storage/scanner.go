@@ -2,27 +2,40 @@ package storage
 
 import (
 	"database/sql"
-	"dhawden/tag"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
+
+	"github.com/dhowden/tag"
 )
 
 var allowedFileFormats = []string{".mp3", ".flac"}
 
 func ScanLibrary(directory string, db *sql.DB) error {
+	// If the filepath contains '~' then Expand the '~' to the user's home directory
+	// This is a workaround for the fact that the filepath package does not expand '~'
+	if directory[:2] == "~/" {
+		usr, err := user.Current()
+		if err != nil {
+			log.Fatalf("Cannot get current user: %v", err)
+		}
+		directory = filepath.Join(usr.HomeDir, directory[2:])
+	}
 	log.Println("Beginning library scan...")
+	log.Println("Scanning directory: ", directory)
 	return filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			log.Printf("Error accessing file %s: %v", path, err)
 			return err
 		}
-
 		if !info.IsDir() && isAllowedAudioFile(path) {
 			if err := processAudioFile(path, db); err != nil {
 				log.Printf("Error processing audio file %s: %v", path, err)
-				// Optionally, you can choose to continue on error
-				// return nil
+			} else {
+				log.Printf("File Successfuly Processed: %v", path)
 			}
+
 		}
 		return nil
 	})
@@ -63,7 +76,7 @@ func processAudioFile(filePath string, db *sql.DB) error {
 		return err
 	}
 
-	songID, err := InsertOrUpdateSong(db, metadata, albumID, artistID, genreID, filePath)
+	_, err = InsertOrUpdateSong(db, metadata, albumID, artistID, genreID, filePath)
 	if err != nil {
 		return err
 	}
@@ -71,7 +84,7 @@ func processAudioFile(filePath string, db *sql.DB) error {
 	return nil
 }
 
-func InsertOrUpdateArtist(db *sql.DB, metadata *tag.Metadata, filePath string) (int64, error) {
+func InsertOrUpdateArtist(db *sql.DB, metadata tag.Metadata, filePath string) (int64, error) {
 	var artistID int64
 
 	// Check if artist already exists
@@ -99,21 +112,47 @@ func InsertOrUpdateArtist(db *sql.DB, metadata *tag.Metadata, filePath string) (
 	return artistID, nil
 }
 
-func InsertOrUpdateAlbum(db *sql.DB, metadata *tag.Metadata, artistID int64, filePath string) (int64, error) {
+func InsertOrUpdateAlbum(db *sql.DB, metadata tag.Metadata, artistID int64, filePath string) (int64, error) {
 	var albumID int64
 
 	// Check if album already exists
-	existsQuery := `SELECT id FROM albums WHERE title = ? AND artist_id = ?`
+	existsQuery := `
+		SELECT 
+			id 
+		FROM albums 
+		WHERE 
+			title = ? 
+			AND 
+			artist_id = ?
+	`
 	err := db.QueryRow(existsQuery, metadata.Album(), artistID).Scan(&albumID)
 	if err == nil {
-		log.Printf("Album already exists: %v", metadata.Album())
+		log.Printf("Album already exists: \"%v\"", metadata.Album())
+
+		// Update existing album
+		updateQuery := `
+            UPDATE albums 
+            SET 
+                release_date = ?, 
+                art_file_path = ? 
+            WHERE 
+                id = ?`
+		_, err := db.Exec(updateQuery, metadata.Year(), filePath, albumID)
+		if err != nil {
+			return 0, err
+		}
+
 		return albumID, nil
 	} else if err != sql.ErrNoRows {
 		return 0, err
 	}
 
 	// Insert new album
-	insertQuery := `INSERT INTO albums (title, artist_id, release_date, art_file_path) VALUES (?, ?, ?, ?)`
+	insertQuery := `
+		INSERT INTO 
+			albums (title, artist_id, release_date, art_file_path) 
+			VALUES (?, ?, ?, ?)
+	`
 	result, err := db.Exec(insertQuery, metadata.Album(), artistID, metadata.Year(), filePath)
 	if err != nil {
 		return 0, err
@@ -127,69 +166,111 @@ func InsertOrUpdateAlbum(db *sql.DB, metadata *tag.Metadata, artistID int64, fil
 	return albumID, nil
 }
 
-func InsertOrUpdateGenre(db *sql.DB, metadata *tag.Metadata) error {
+func InsertOrUpdateGenre(db *sql.DB, metadata tag.Metadata) (int64, error) {
 	var genreID int64
 
 	// Check if genre already exists
-	existsQuery := `SELECT id FROM genres WHERE name = ?`
+	existsQuery := `
+		SELECT 
+			id 
+		FROM 
+			genres 
+		WHERE name = ?
+	`
 	err := db.QueryRow(existsQuery, metadata.Genre()).Scan(&genreID)
 	if err == nil {
-		log.Printf("Genre already exists: %v", metadata.Genre())
-		return nil
+		log.Printf("Genre already exists: \"%v\"", metadata.Genre())
+		return genreID, nil
 	} else if err != sql.ErrNoRows {
-		return err
+		return -1, err
 	}
 
 	// Insert new genre
-	insertQuery := `INSERT INTO genres(name) VALUES(?)`
+	insertQuery := `
+		INSERT INTO 
+			genres(name) 
+		VALUES(?)
+	`
 	result, err := db.Exec(insertQuery, metadata.Genre())
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	genreID, err = result.LastInsertId()
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	return nil
+	return genreID, nil
 }
 
-func InsertOrUpdateSong(db *sql.DB, metadata *tag.Metadata, albumID, artistID int64, filePath string) error {
+func InsertOrUpdateSong(db *sql.DB, metadata tag.Metadata, albumID int64, artistID int64, genreID int64, filePath string) (int64, error) {
 	var songID int64
-	trackNumber, trackTotal := metadata.Track()
+	trackNumber, _ := metadata.Track()
 
 	// Check if song already exists
-	existsQuery := `SELECT id FROM songs WHERE title = ? AND album_id = ?`
+	existsQuery := `
+		SELECT 
+			id 
+		FROM 
+			songs 
+		WHERE 
+			title = ? 
+			AND 
+			album_id = ?
+	`
 	err := db.QueryRow(existsQuery, metadata.Title(), albumID).Scan(&songID)
 	if err == nil {
-		log.Printf("Song already exists: %v", metadata.Title())
-		return nil
+		log.Printf("Song \"%v\" already exists. Updating...", metadata.Title())
+
+		// Update existing song
+		updateQuery := `
+            UPDATE songs 
+            SET 
+                artist_id = ?, 
+                genre_id = ?, 
+                track_number = ?, 
+                file_path = ?, 
+                file_format = ? 
+            WHERE 
+                id = ?`
+		_, err := db.Exec(updateQuery, artistID, genreID, trackNumber, filePath, metadata.FileType(), songID)
+		if err != nil {
+			return -1, err
+		}
+
+		return songID, nil
 	} else if err != sql.ErrNoRows {
-		return err
+		return -1, err
 	}
 
 	// Insert new song
-	insertQuery := `INSERT INTO songs(title, album_id, artist_id, track_number, track_total, file_path) VALUES (?, ?, ?, ?, ?, ?)`
-	result, err := db.Exec(insertQuery, metadata.Title(), albumID, artistID, trackNumber, trackTotal, filePath)
+	insertQuery := `
+		INSERT INTO 
+			songs(title, album_id, artist_id, genre_id, track_number, file_path, file_format) 
+		VALUES (?, ?, ?, ?, ?, ?, ?)`
+	result, err := db.Exec(insertQuery, metadata.Title(), albumID, artistID, genreID, trackNumber, filePath, metadata.FileType())
 	if err != nil {
-		return err
+		return -1, err
 	}
 
 	songID, err = result.LastInsertId()
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	return nil
+	return songID, nil
 }
 
-func extractMetadata(filePath string) (*tag.Metadata, error) {
-	m, err := tag.ReadFrom(filePath)
+func extractMetadata(filePath string) (tag.Metadata, error) {
+	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
-	log.Print(m.Format()) // The detected format.
+	m, err := tag.ReadFrom(file)
+	if err != nil {
+		return nil, err
+	}
 
-	return m, nil // Placeholder
+	return m, nil
 }
