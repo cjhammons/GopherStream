@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"cjhammons.com/goaudio/database/models"
 	"github.com/dhowden/tag"
 )
 
@@ -24,6 +25,20 @@ func ScanLibrary(directory string, db *sql.DB) error {
 	}
 	log.Println("Beginning library scan...")
 	log.Println("Scanning directory: ", directory)
+
+	deletedSongs, err := checkForDeletedFiles(directory, db)
+	if err != nil {
+		return err
+	}
+	if len(deletedSongs) > 0 {
+		err = handleDeletedFiles(db, deletedSongs)
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Println("No Songs to delete.")
+	}
+
 	return filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Printf("Error accessing file %s: %v", path, err)
@@ -39,6 +54,42 @@ func ScanLibrary(directory string, db *sql.DB) error {
 		}
 		return nil
 	})
+}
+
+func handleDeletedFiles(db *sql.DB, deletedSongs []models.Song) error {
+	//First batch delete the songs by id
+	log.Println("Handling deleted files...")
+	deletedIds := []int64{}
+	for _, song := range deletedSongs {
+		deletedIds = append(deletedIds, song.ID)
+	}
+	err := DeleteSongs(db, deletedIds)
+	if err != nil {
+		log.Printf("Error deleting songs: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func checkForDeletedFiles(directory string, db *sql.DB) ([]models.Song, error) {
+	log.Println("Checking for deleted files...")
+	deletedSongs := []models.Song{}
+	songs, err := GetAllSongs(db)
+	if err != nil {
+		log.Printf("Error getting all songs: %v", err)
+		return nil, err
+	}
+
+	for _, song := range songs {
+		filepath := song.FilePath
+		if _, err := os.Stat(filepath); os.IsNotExist(err) {
+			log.Printf("File not found in library: %v", filepath)
+			deletedSongs = append(deletedSongs, song)
+		}
+	}
+
+	return deletedSongs, nil
 }
 
 func isAllowedAudioFile(path string) bool {
