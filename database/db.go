@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 
+	"cjhammons.com/goaudio/database/models"
 	"github.com/dhowden/tag"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -276,4 +277,144 @@ func InsertOrUpdateSong(db *sql.DB, metadata tag.Metadata, albumID int64, artist
 	}
 
 	return songID, nil
+}
+
+func GetAllSongs(db *sql.DB) ([]models.Song, error) {
+	var songs []models.Song
+	query := `
+		SELECT 
+			id,
+			title,
+			artist_id,
+			album_id,
+			genre_id,
+			track_number,
+			file_path,
+			file_format
+		FROM 
+			songs
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var song models.Song
+		err := rows.Scan(
+			&song.ID,
+			&song.Title,
+			&song.ArtistID,
+			&song.AlbumID,
+			&song.GenreID,
+			&song.TrackNum,
+			&song.FilePath,
+			&song.FileFormat,
+		)
+		if err != nil {
+			return nil, err
+		}
+		songs = append(songs, song)
+	}
+	return songs, nil
+}
+
+func DeleteSong(db *sql.DB, songID int64) error {
+	query := `
+		DELETE FROM songs
+		WHERE id = ?
+	`
+	_, err := db.Exec(query, songID)
+	if err != nil {
+		return err
+	}
+	err = cleanUpHangings(db)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DeleteSongs(db *sql.DB, songIDs []int64) error {
+	query := `
+		DELETE FROM songs
+		WHERE id IN (?)
+	`
+	_, err := db.Exec(query, songIDs)
+	if err != nil {
+		return err
+	}
+	err = cleanUpHangings(db)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func cleanUpHangings(db *sql.DB) error {
+	err := deleteHangingArtist(db)
+	if err != nil {
+		return err
+	}
+	err = deleteHangingAlbum(db)
+	if err != nil {
+		return err
+	}
+	err = deleteHangingGenre(db)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteHangingArtist(db *sql.DB) error {
+	query := `
+		DELETE FROM artists
+		WHERE id NOT IN (
+			SELECT DISTINCT artist_id
+			FROM songs
+		)
+	`
+	_, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteHangingAlbum(db *sql.DB) error {
+	query := `
+		DELETE FROM albums
+		WHERE id NOT IN (
+			SELECT DISTINCT album_id
+			FROM songs
+		)
+	`
+	_, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteHangingGenre(db *sql.DB) error {
+	query := `
+		DELETE FROM genres
+		WHERE id NOT IN (
+			SELECT DISTINCT genre_id
+			FROM songs
+		)
+	`
+	_, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
