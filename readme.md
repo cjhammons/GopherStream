@@ -1,5 +1,7 @@
 # Gopher Stream
 
+**This is a work in progress**
+
 A self-hosted music streaming solution. It scans all the music in a specified library directory and serves them via REST API for browsing and streaming.
 
 
