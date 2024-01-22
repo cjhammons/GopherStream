@@ -26,5 +26,5 @@ Create a file called ``config.json`` in the root directory of the Gopher Stream 
 Then build and run:
 ```bash
 go build
-./gopherstream
+./gopher-stream
 ```
