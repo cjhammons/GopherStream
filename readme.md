@@ -9,7 +9,7 @@ A self-hosted music streaming solution. It scans all the music in a specified li
 
 ## Configuration for Local Running
 
-You'll need to (install Go)[https://go.dev/doc/install]
+You'll need to [install Go](https://go.dev/doc/install)
 
 To run locally you first need to select a directory to use as your Library. This directory can have as many subdirectories as you like, it will not affect functionality. Make note of the filepath of the directory.
 
