@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"log"
 
-	"cjhammons.com/goaudio/database/models"
+	"cjhammons.com/gopher-stream/database/models"
 	"github.com/dhowden/tag"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func InitializeDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./goaudio.db")
+	db, err := sql.Open("sqlite3", "./gopher-stream.db")
 	if err != nil {
 		return nil, err
 	}

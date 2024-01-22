@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"cjhammons.com/goaudio/config"
-	"cjhammons.com/goaudio/database"
+	"cjhammons.com/gopher-stream/config"
+	"cjhammons.com/gopher-stream/database"
 )
 
 func main() {

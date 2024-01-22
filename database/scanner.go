@@ -7,7 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"cjhammons.com/goaudio/database/models"
+	"cjhammons.com/gopher-stream/database/models"
 	"github.com/dhowden/tag"
 )
 

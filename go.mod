@@ -1,4 +1,4 @@
-module cjhammons.com/goaudio
+module cjhammons.com/gopher-stream
 
 go 1.21
 
