@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 
+	"cjhammons.com/gopher-stream/auth"
 	"cjhammons.com/gopher-stream/database/models"
 	"github.com/dhowden/tag"
 	_ "github.com/mattn/go-sqlite3"
@@ -55,6 +56,13 @@ func InitializeDB() (*sql.DB, error) {
 		CREATE TABLE IF NOT EXISTS genres (
 			id INTEGER PRIMARY KEY,
 			name TEXT NOT NULL
+		);
+	`, `
+		CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY,
+			username TEXT UNIQUE NOT NULL,
+			hashpassword TEXT NOT NULL,
+			avatar_path TEXT
 		);
 	`,
 	}
@@ -347,6 +355,73 @@ func DeleteSongs(db *sql.DB, songIDs []int64) error {
 		return err
 	}
 	err = cleanUpHangings(db)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func CreateUser(db *sql.DB, username string, password string) error {
+	query := `
+		INSERT INTO users(
+			username, 
+			hashpassword
+		)
+		VALUES (?, ?)
+	`
+	hashpassword, err := auth.CreateHashPassword(password)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(query, username, hashpassword)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func DeleteUser(db *sql.DB, username string) error {
+	query := `
+		DELETE FROM users
+		WHERE username = ?
+	`
+	_, err := db.Exec(query, username)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func CheckUsernameExists(db *sql.DB, username string) (bool, error) {
+	query := `
+		SELECT COUNT(*) FROM users WHERE username = ?
+	`
+	var count int
+	err := db.QueryRow(query, username).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+func UpdateUser(db *sql.DB, username string, password string) error {
+	query := `
+		UPDATE users
+		SET
+			hashpassword = ?
+			avatar_path = ?
+		WHERE
+			username = ?
+	`
+	hashpassword, err := auth.CreateHashPassword(password)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(query, hashpassword, username)
 	if err != nil {
 		return err
 	}
