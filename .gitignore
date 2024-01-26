@@ -22,6 +22,8 @@ gopher-stream
 go.work
 config.json
 *.mp3
+*m4a
 *.db
 storage/
 .vscode/
+testlibrary/
