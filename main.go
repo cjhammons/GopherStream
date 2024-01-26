@@ -2,9 +2,16 @@ package main
 
 import (
 	"log"
+	"os"
+	"time"
+
+	"net/http"
 
 	"cjhammons.com/gopher-stream/config"
 	"cjhammons.com/gopher-stream/database"
+	"cjhammons.com/gopher-stream/routes"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 )
 
 func main() {
@@ -21,7 +28,21 @@ func main() {
 
 	database.ScanLibrary(cfg.LibraryDirectory, db)
 
-	// http.HandleFunc("/stream", streamHandler)
-	// log.Println("Server is running on http://localhost:8080/stream")
-	// log.Fatal(http.ListenAndServe(":8080", nil))
+	router := mux.NewRouter()
+	router.HandleFunc("/songs", routes.GetSongHandler(db)).Methods("GET")
+
+	// Wrap router with Gorilla Handlers for additional functionality like Logging
+	loggingRouter := handlers.LoggingHandler(os.Stdout, router)
+
+	// Start server
+	srv := &http.Server{
+		Handler:      loggingRouter,
+		Addr:         "0.0.0.0:6969",
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+	log.Println("Starting server on port 6969")
+
+	log.Fatal(srv.ListenAndServe())
+
 }
