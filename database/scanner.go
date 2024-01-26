@@ -11,7 +11,7 @@ import (
 	"github.com/dhowden/tag"
 )
 
-var allowedFileFormats = []string{".mp3", ".flac"}
+var allowedFileFormats = []string{".mp3", ".flac", ".m4a"}
 
 func ScanLibrary(directory string, db *sql.DB) error {
 	// If the filepath contains '~' then Expand the '~' to the user's home directory
