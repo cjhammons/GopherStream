@@ -2,19 +2,19 @@ package routes
 
 import (
 	"database/sql"
-	"encoding/json"
 	"net/http"
+	"text/template"
 
 	"cjhammons.com/gopher-stream/database"
 )
 
-func GetSongHandler(db *sql.DB) http.HandlerFunc {
+func GetSongHtmxHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		songHandler(db, w, r)
 	}
 }
 
-func songHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+func songHtmxHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	songs, err := database.GetAllSongs(db)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -23,6 +23,6 @@ func songHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	json.NewEncoder(w).Encode(songs)
-
+	tmpl := template.Must(template.ParseFiles("templates/songs.html"))
+	tmpl.Execute(w, songs)
 }

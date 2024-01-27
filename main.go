@@ -29,7 +29,7 @@ func main() {
 	database.ScanLibrary(cfg.LibraryDirectory, db)
 
 	router := mux.NewRouter()
-	router.HandleFunc("/songs", routes.GetSongHandler(db)).Methods("GET")
+	router.HandleFunc("/songs", routes.GetSongHtmxHandler(db)).Methods("GET")
 
 	// Wrap router with Gorilla Handlers for additional functionality like Logging
 	loggingRouter := handlers.LoggingHandler(os.Stdout, router)
