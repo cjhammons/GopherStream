@@ -287,47 +287,6 @@ func InsertOrUpdateSong(db *sql.DB, metadata tag.Metadata, albumID int64, artist
 	return songID, nil
 }
 
-func GetAllSongs(db *sql.DB) ([]models.Song, error) {
-	var songs []models.Song
-	query := `
-		SELECT 
-			id,
-			title,
-			artist_id,
-			album_id,
-			genre_id,
-			track_number,
-			file_path,
-			file_format
-		FROM 
-			songs
-	`
-	rows, err := db.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var song models.Song
-		err := rows.Scan(
-			&song.ID,
-			&song.Title,
-			&song.ArtistID,
-			&song.AlbumID,
-			&song.GenreID,
-			&song.TrackNum,
-			&song.FilePath,
-			&song.FileFormat,
-		)
-		if err != nil {
-			return nil, err
-		}
-		songs = append(songs, song)
-	}
-	return songs, nil
-}
-
 func DeleteSong(db *sql.DB, songID int64) error {
 	query := `
 		DELETE FROM songs
@@ -360,6 +319,50 @@ func DeleteSongs(db *sql.DB, songIDs []int64) error {
 	}
 
 	return nil
+}
+
+func GetAllSongs(db *sql.DB) ([]models.Song, error) {
+	var songs []models.Song
+	query := `
+		SELECT 
+			s.id,
+			s.title,
+			a.name,
+			al.title,
+			g.name,
+			s.track_number,
+			s.file_path,
+			s.file_format
+		FROM 
+			songs s
+		INNER JOIN artists a ON s.artist_id = a.id
+		INNER JOIN albums al ON s.album_id = al.id
+		INNER JOIN genres g ON s.genre_id = g.id
+	`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var song models.Song
+		err := rows.Scan(
+			&song.ID,
+			&song.Title,
+			&song.Artist,
+			&song.Album,
+			&song.Genre,
+			&song.TrackNum,
+			&song.FilePath,
+			&song.FileFormat,
+		)
+		if err != nil {
+			return nil, err
+		}
+		songs = append(songs, song)
+	}
+	return songs, nil
 }
 
 func CreateUser(db *sql.DB, username string, password string) error {
